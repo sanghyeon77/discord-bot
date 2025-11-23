@@ -28,6 +28,7 @@ WEBHOOK_URL = os.getenv(
 # 주차장 이름과 ID 매핑
 PARKING_LOT_MAP = {
     "재능고": 1,
+    "재능대": 1,  # 재능대학교
     "다이소": 2,
     "휴먼시아": 3,
     "동산고": 4,
@@ -53,33 +54,38 @@ def parse_parking_message(text):
     
     data = {}
     
-    # 🔧 수정: 이모지, 공백, 볼드 마크다운(**)을 허용하는 정규식 패턴
-    # [*\s]* 는 볼드 마크다운과 공백을 모두 허용
+    # 🔧 수정: 이모지, 공백, 볼드 마크다운(**), "개" 단위를 허용하는 정규식 패턴
     
-    # 전체 주차공간 추출
-    total_match = re.search(r'전체[*\s]*주차공간[*:\s]*(\d+)', text)
+    # 전체 주차공간 추출 (개 단위 포함)
+    total_match = re.search(r'전체[*\s]*주차공간[*:\s]*(\d+)개?', text)
     if total_match:
         data['totalSpaces'] = int(total_match.group(1))
     
-    # 주차중 추출
-    occupied_match = re.search(r'주차중[*:\s]*(\d+)', text)
+    # 주차중 추출 (개 단위 포함)
+    occupied_match = re.search(r'주차중[*:\s]*(\d+)개?', text)
     if occupied_match:
         data['occupiedSpaces'] = int(occupied_match.group(1))
     
-    # 빈 공간 추출
-    empty_match = re.search(r'빈[*\s]*공간[*:\s]*(\d+)', text)
+    # 빈 공간 추출 (개 단위 포함)
+    empty_match = re.search(r'빈[*\s]*공간[*:\s]*(\d+)개?', text)
     if empty_match:
         data['emptySpaces'] = int(empty_match.group(1))
     
-    # 빈 공간 비율 추출 (🔧 수정: % 기호 제거)
+    # 빈 공간 비율 추출 (% 기호 제거)
     ratio_match = re.search(r'빈[*\s]*공간[*\s]*비율[*:\s]*([\d.]+)%?', text)
     if ratio_match:
-        data['emptyRatio'] = ratio_match.group(1)  # "10.0" (% 기호 없이)
+        data['emptyRatio'] = ratio_match.group(1)
     
-    # 분석 시간 추출
+    # 분석 시간 추출 (다양한 형식 지원)
+    # 형식 1: 2025-11-24 02:07:46
     time_match = re.search(r'분석[*\s]*시간[*:\s]*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})', text)
     if time_match:
         data['analysisTime'] = time_match.group(1)
+    else:
+        # 형식 2: 2025-11-24 02:07 (초 없음)
+        time_match = re.search(r'분석[*\s]*시간[*:\s]*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})', text)
+        if time_match:
+            data['analysisTime'] = time_match.group(1) + ':00'
     
     # 상태 판단
     if 'emptyRatio' in data:
