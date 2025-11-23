@@ -28,13 +28,11 @@ WEBHOOK_URL = os.getenv(
 # 주차장 이름과 ID 매핑
 PARKING_LOT_MAP = {
     "재능고": 1,
-    "재능대": 1,  # 재능대학교
+    "재능고 주차장": 1,
     "다이소": 2,
-    "휴먼시아": 3,
-    "동산고": 4,
-    "문화센터": 5,
-    "라이브캠": 5,  # 실시간 라이브캠
+    "다이소 주차장": 2,
     "실시간": 5,
+    "실시간 주차장": 5,
 }
 
 # 채널 ID와 주차장 ID 매핑
@@ -185,7 +183,11 @@ async def on_ready():
     # Webhook URL 연결 테스트
     print(f'\n🧪 Webhook 연결 테스트 중...')
     try:
-        test_response = requests.get(WEBHOOK_URL.replace('/webhook/parking/update', '/health'), timeout=5)
+        # Webhook URL에서 base URL 추출
+        base_url = WEBHOOK_URL.replace('/api/webhook/parking/update', '')
+        health_url = f'{base_url}/health'
+        print(f'   Health Check URL: {health_url}')
+        test_response = requests.get(health_url, timeout=5)
         if test_response.status_code == 200:
             print(f'✅ 백엔드 연결 성공!')
         else:
