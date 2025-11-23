@@ -134,7 +134,8 @@ def send_to_webhook(parking_lot_id, image_url, message_text):
     
     try:
         print(f"⏳ POST 요청 전송 중...")
-        response = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        # 전송 시간 최적화: timeout 3초로 단축
+        response = requests.post(WEBHOOK_URL, json=payload, timeout=3)
         print(f"📥 응답 수신: Status {response.status_code}")
         print(f"📥 응답 내용: {response.text[:200]}..." if len(response.text) > 200 else f"📥 응답 내용: {response.text}")
         
@@ -153,7 +154,8 @@ def send_to_webhook(parking_lot_id, image_url, message_text):
             print(f"{'='*60}\n")
             return False
     except requests.exceptions.Timeout:
-        print(f"❌ 타임아웃 오류: 서버 응답 없음 (10초 초과)")
+        print(f"❌ 타임아웃 오류: 서버 응답 없음 (3초 초과)")
+        print(f"⚠️ Railway 백엔드가 sleep 상태일 수 있습니다. 다시 시도하세요.")
         print(f"{'='*60}\n")
         return False
     except requests.exceptions.ConnectionError as e:
