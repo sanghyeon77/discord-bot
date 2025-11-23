@@ -180,6 +180,19 @@ async def on_ready():
     print(f'{"="*60}')
     print(f'✅ 봇 로그인: {bot.user.name} (ID: {bot.user.id})')
     print(f'\n📡 Webhook URL: {WEBHOOK_URL}')
+    print(f'🔍 환경 변수 WEBHOOK_URL 설정됨: {"예" if os.getenv("WEBHOOK_URL") else "아니오 (기본값 사용)"}')
+    
+    # Webhook URL 연결 테스트
+    print(f'\n🧪 Webhook 연결 테스트 중...')
+    try:
+        test_response = requests.get(WEBHOOK_URL.replace('/webhook/parking/update', '/health'), timeout=5)
+        if test_response.status_code == 200:
+            print(f'✅ 백엔드 연결 성공!')
+        else:
+            print(f'⚠️ 백엔드 응답: {test_response.status_code}')
+    except Exception as e:
+        print(f'❌ 백엔드 연결 실패: {e}')
+    
     print(f'\n🅿️ 등록된 주차장:')
     for name, lot_id in PARKING_LOT_MAP.items():
         print(f'   - {name}: ID {lot_id}')
