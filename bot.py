@@ -114,8 +114,15 @@ def send_to_webhook(parking_lot_id, image_url, message_text):
     """
     Discord 메시지를 파싱하여 webhook으로 전송
     """
+    print(f"\n{'='*60}")
+    print(f"🌐 Webhook 전송 시작")
+    print(f"   주차장 ID: {parking_lot_id}")
+    print(f"   이미지 URL: {image_url[:50]}..." if len(image_url) > 50 else f"   이미지 URL: {image_url}")
+    print(f"   메시지 텍스트: {message_text[:100]}..." if len(message_text) > 100 else f"   메시지 텍스트: {message_text}")
+    
     # 메시지에서 데이터 추출
     parsed_data = parse_parking_message(message_text)
+    print(f"📊 파싱된 데이터: {parsed_data}")
     
     # Webhook 페이로드 구성
     payload = {
@@ -124,24 +131,63 @@ def send_to_webhook(parking_lot_id, image_url, message_text):
         **parsed_data  # 파싱된 데이터 병합
     }
     
-    print(f"📤 Webhook 전송: {payload}")
+    print(f"📤 최종 페이로드: {payload}")
+    print(f"🎯 Target URL: {WEBHOOK_URL}")
     
     try:
-        response = requests.post(WEBHOOK_URL, json=payload)
+        print(f"⏳ POST 요청 전송 중...")
+        response = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+        print(f"📥 응답 수신: Status {response.status_code}")
+        print(f"📥 응답 내용: {response.text[:200]}..." if len(response.text) > 200 else f"📥 응답 내용: {response.text}")
+        
         if response.status_code == 200:
-            print(f"✅ 주차장 업데이트 성공: {response.json()}")
+            print(f"✅ 주차장 업데이트 성공!")
+            try:
+                print(f"   응답 JSON: {response.json()}")
+            except:
+                pass
+            print(f"{'='*60}\n")
             return True
         else:
-            print(f"❌ 주차장 업데이트 실패: {response.status_code} - {response.text}")
+            print(f"❌ 주차장 업데이트 실패!")
+            print(f"   Status Code: {response.status_code}")
+            print(f"   응답 내용: {response.text}")
+            print(f"{'='*60}\n")
             return False
+    except requests.exceptions.Timeout:
+        print(f"❌ 타임아웃 오류: 서버 응답 없음 (10초 초과)")
+        print(f"{'='*60}\n")
+        return False
+    except requests.exceptions.ConnectionError as e:
+        print(f"❌ 연결 오류: 서버에 연결할 수 없습니다")
+        print(f"   상세: {str(e)}")
+        print(f"{'='*60}\n")
+        return False
     except Exception as e:
-        print(f"❌ 오류 발생: {str(e)}")
+        print(f"❌ 예상치 못한 오류 발생!")
+        print(f"   오류 타입: {type(e).__name__}")
+        print(f"   오류 메시지: {str(e)}")
+        import traceback
+        print(f"   스택 트레이스:")
+        traceback.print_exc()
+        print(f"{'='*60}\n")
         return False
 
 @bot.event
 async def on_ready():
+    print(f'\n{"="*60}')
+    print(f'🤖 Discord 봇 시작!')
+    print(f'{"="*60}')
     print(f'✅ 봇 로그인: {bot.user.name} (ID: {bot.user.id})')
-    print('------')
+    print(f'\n📡 Webhook URL: {WEBHOOK_URL}')
+    print(f'\n🅿️ 등록된 주차장:')
+    for name, lot_id in PARKING_LOT_MAP.items():
+        print(f'   - {name}: ID {lot_id}')
+    print(f'\n📍 채널 매핑:')
+    for channel_id, lot_id in CHANNEL_TO_PARKING_MAP.items():
+        print(f'   - Channel {channel_id} → Parking ID {lot_id}')
+    print(f'\n💡 준비 완료! 메시지를 기다리는 중...')
+    print(f'{"="*60}\n')
 
 @bot.event
 async def on_message(message):
