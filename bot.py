@@ -139,32 +139,54 @@ async def on_message(message):
     if message.author == bot.user:
         return
     
+    # 🔍 디버깅: 모든 메시지 로그
+    print(f"\n{'='*60}")
+    print(f"📬 새 메시지 수신")
+    print(f"   채널 ID: {message.channel.id}")
+    print(f"   채널 이름: {message.channel.name if hasattr(message.channel, 'name') else '(DM)'}")
+    print(f"   작성자: {message.author.name}")
+    print(f"   첨부파일 개수: {len(message.attachments)}")
+    print(f"   메시지 내용: {message.content[:100] if message.content else '(없음)'}")
+    
     # 이미지가 첨부된 경우
     if message.attachments:
+        print(f"📎 첨부파일 감지:")
+        for i, att in enumerate(message.attachments):
+            print(f"   [{i}] 파일명: {att.filename}")
+            print(f"   [{i}] Content-Type: {att.content_type}")
+            print(f"   [{i}] URL: {att.url}")
+        
         attachment = message.attachments[0]
         
         # 이미지 파일인지 확인
         if attachment.content_type and attachment.content_type.startswith('image/'):
+            print(f"✅ 이미지 파일 확인됨")
             parking_lot_id = None
             
             # 1. 채널 ID로 주차장 매핑 확인 (우선순위)
             if message.channel.id in CHANNEL_TO_PARKING_MAP:
                 parking_lot_id = CHANNEL_TO_PARKING_MAP[message.channel.id]
-                print(f"📍 채널 ID {message.channel.id}로 주차장 매핑: {parking_lot_id}")
+                print(f"✅ 채널 매핑 성공!")
+                print(f"   채널 ID {message.channel.id} → 주차장 ID: {parking_lot_id}")
+            else:
+                print(f"⚠️ 채널 매핑 없음")
+                print(f"   현재 채널 ID: {message.channel.id}")
+                print(f"   등록된 채널: {list(CHANNEL_TO_PARKING_MAP.keys())}")
             
             # 2. 메시지 내용에서 주차장 이름 추출 (채널 매핑이 없는 경우)
-            elif message.content:
+            if not parking_lot_id and message.content:
                 parking_lot_id = extract_parking_lot_id(message.content)
+                if parking_lot_id:
+                    print(f"✅ 메시지에서 주차장 ID 추출: {parking_lot_id}")
             
             if parking_lot_id:
-                print(f"📨 메시지 수신:")
-                print(f"원본 텍스트: {repr(message.content)}")  # 디버깅용 원본 텍스트 출력
-                print(f"🅿️ 주차장 ID: {parking_lot_id}")
-                print(f"🖼️ 이미지 URL: {attachment.url}")
+                print(f"\n🚀 Webhook 전송 준비:")
+                print(f"   주차장 ID: {parking_lot_id}")
+                print(f"   이미지 URL: {attachment.url}")
                 
                 # 메시지 텍스트 파싱
                 parsed_data = parse_parking_message(message.content) if message.content else {}
-                print(f"파싱된 데이터: {parsed_data}")
+                print(f"   파싱된 데이터: {parsed_data}")
                 
                 # webhook 전송
                 success = send_to_webhook(
@@ -176,10 +198,20 @@ async def on_message(message):
                 # 반응 추가
                 if success:
                     await message.add_reaction('✅')
+                    print(f"✅ 성공 반응 추가됨")
                 else:
                     await message.add_reaction('❌')
+                    print(f"❌ 실패 반응 추가됨")
             else:
-                print(f"⚠️ 주차장 이름을 찾을 수 없습니다: {message.content[:50] if message.content else '(내용 없음)'}...")
+                print(f"❌ 주차장 ID를 찾을 수 없음")
+                print(f"   메시지 내용: {message.content[:100] if message.content else '(없음)'}")
+                await message.add_reaction('⚠️')
+        else:
+            print(f"⚠️ 이미지가 아닌 파일: {attachment.content_type}")
+    else:
+        print(f"ℹ️ 첨부파일 없음")
+    
+    print(f"{'='*60}\n")
     
     # 다른 명령어 처리
     await bot.process_commands(message)
@@ -240,6 +272,57 @@ async def test_discord_format(ctx):
     import json
     result += json.dumps(parsed, ensure_ascii=False, indent=2)
     result += "\n```"
+    
+    await ctx.send(result)
+
+@bot.command(name='채널정보')
+async def channel_info(ctx):
+    """현재 채널 정보 확인"""
+    result = f"""**📺 채널 정보**
+
+**채널 ID:** `{ctx.channel.id}`
+**채널 이름:** {ctx.channel.name if hasattr(ctx.channel, 'name') else '(DM)'}
+**서버:** {ctx.guild.name if ctx.guild else '(DM)'}
+
+**📍 채널 매핑 상태:**
+"""
+    
+    if ctx.channel.id in CHANNEL_TO_PARKING_MAP:
+        parking_id = CHANNEL_TO_PARKING_MAP[ctx.channel.id]
+        result += f"✅ 이 채널은 주차장 ID `{parking_id}`에 매핑되어 있습니다.\n"
+        result += "이미지를 전송하면 자동으로 처리됩니다!"
+    else:
+        result += f"⚠️ 이 채널은 매핑되지 않았습니다.\n\n"
+        result += "**등록된 채널:**\n"
+        for ch_id, park_id in CHANNEL_TO_PARKING_MAP.items():
+            result += f"• 채널 ID: `{ch_id}` → 주차장 ID: {park_id}\n"
+        result += "\n**이 채널을 등록하려면:**\n"
+        result += "bot.py의 CHANNEL_TO_PARKING_MAP에 추가하세요."
+    
+    await ctx.send(result)
+
+@bot.command(name='이미지테스트')
+async def test_image(ctx):
+    """이미지 전송 테스트 - 이미지를 첨부하고 이 명령어 사용"""
+    if not ctx.message.attachments:
+        await ctx.send("❌ 이미지를 첨부해주세요!\n\n사용법: 이미지와 함께 `!이미지테스트` 입력")
+        return
+    
+    attachment = ctx.message.attachments[0]
+    
+    result = f"""**🖼️ 이미지 테스트 결과**
+
+**파일명:** {attachment.filename}
+**Content-Type:** {attachment.content_type}
+**크기:** {attachment.size:,} bytes
+**URL:** {attachment.url}
+
+**이미지 타입:** """
+    
+    if attachment.content_type and attachment.content_type.startswith('image/'):
+        result += "✅ 이미지입니다!"
+    else:
+        result += f"❌ 이미지가 아닙니다 ({attachment.content_type})"
     
     await ctx.send(result)
 
