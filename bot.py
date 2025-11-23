@@ -9,6 +9,7 @@ import discord
 from discord.ext import commands
 import requests
 import re
+import os
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -17,8 +18,12 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Webhook URL (실제 배포된 URL로 변경)
-WEBHOOK_URL = "https://3000-iuxm8k8bd2gr64f2ctiz2-28f73228.manus-asia.computer/api/webhook/parking/update"
+# Webhook URL (Railway 배포 서버)
+# Railway 백엔드 서버 URL - 환경변수로 오버라이드 가능
+WEBHOOK_URL = os.getenv(
+    'WEBHOOK_URL', 
+    "https://appealing-encouragement-production.up.railway.app/api/webhook/parking/update"
+)
 
 # 주차장 이름과 ID 매핑
 PARKING_LOT_MAP = {
@@ -240,8 +245,6 @@ async def test_discord_format(ctx):
 
 # 봇 실행
 if __name__ == "__main__":
-    import os
-    
     # .env 파일 로드
     load_dotenv()
     
